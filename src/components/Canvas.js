@@ -8,12 +8,14 @@ import ReactFlow, {
   useEdgesState,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { validateWorkflow } from "../utils/Validation";
 import { saveWorkflow, loadWorkflow } from "../utils/Storage";
-// Removed Sidebar import here
+
 const Canvas = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [selectedNode, setSelectedNode] = useState(null);
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [selectedNode, setSelectedNode] = useState(null); // State to store the selected node
 
   const onConnect = useCallback(
     (connection) => setEdges((eds) => addEdge(connection, eds)),
@@ -50,20 +52,21 @@ const Canvas = () => {
     event.dataTransfer.dropEffect = "move";
   }, []);
 
-  const onNodeClick = useCallback(
-    (event, node) => {
-      setSelectedNode(node);
-    },
-    []
-  );
-
-  const updateNode = useCallback((nodeId, newData) => {
-    setNodes((nds) =>
-      nds.map((node) =>
-        node.id === nodeId ? { ...node, data: newData } : node
-      )
-    );
+  const onNodeClick = useCallback((event, node) => {
+    setSelectedNode(node); // Set the selected node
   }, []);
+
+  const validateAndSave = () => {
+    const errors = validateWorkflow(nodes, edges);
+    setValidationErrors(errors);
+
+    if (errors.length === 0) {
+      saveWorkflow(nodes, edges);
+      alert("Workflow saved successfully!");
+    } else {
+      alert("Validation failed. Please fix the errors.");
+    }
+  };
 
   useEffect(() => {
     const { savedNodes, savedEdges } = loadWorkflow();
@@ -72,36 +75,39 @@ const Canvas = () => {
   }, []);
 
   return (
-    <div
-      style={{
-        height: "90vh",
-        width: "100%",  // Ensures Canvas fills available space after Sidebar is removed from here
-        display: "flex",
-      }}
-      onDrop={onDrop}
-      onDragOver={onDragOver}
-    >
-      <div
-        style={{
-          height: "100%",
-          width: "100%",  // The canvas now takes up 75% of the width
-          borderLeft: "1px solid #ccc",
-        }}
+    <div style={{ height: "90vh", width: "100%" }} onDrop={onDrop} onDragOver={onDragOver}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onNodeClick={onNodeClick} // Handle node clicks to select a node
+        fitView
       >
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          fitView
-        >
-          <MiniMap />
-          <Controls />
-          <Background />
-        </ReactFlow>
-      </div>
+        <MiniMap />
+        <Controls />
+        <Background />
+      </ReactFlow>
+      <button onClick={validateAndSave}>Save Workflow</button>
+      {validationErrors.length > 0 && (
+        <div className="validation-errors">
+          {validationErrors.map((err, idx) => (
+            <div key={idx}>{err}</div>
+          ))}
+        </div>
+      )}
+
+      {/* Display selected node details */}
+      {selectedNode && (
+        <div className="node-details" style={{ marginTop: "20px", padding: "10px", border: "1px solid #ddd" }}>
+          <h3>Selected Node Details:</h3>
+          <p><strong>Node ID:</strong> {selectedNode.id}</p>
+          <p><strong>Label:</strong> {selectedNode.data.label}</p>
+          <p><strong>Position:</strong> x: {selectedNode.position.x}, y: {selectedNode.position.y}</p>
+          {/* You can add more details based on your node data */}
+        </div>
+      )}
     </div>
   );
 };

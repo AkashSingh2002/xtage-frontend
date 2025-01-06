@@ -19,7 +19,7 @@ const Canvas = () => {
 
   const onConnect = useCallback(
     (connection) => setEdges((eds) => addEdge(connection, eds)),
-    []
+    
   );
 
   const onDrop = useCallback(
